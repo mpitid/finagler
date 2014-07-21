@@ -14,8 +14,8 @@ object service {
     args.toList match {
       case path :: host :: _ =>
         Await.ready(Http.serve(host, new FileService(simpleResolver(path))))
-      case path :: Nil =>
-        Await.ready(Http.serve("localhost:8080", new FileService(simpleResolver(path))))
+      case host :: Nil =>
+        Await.ready(Http.serve(host, new EchoService))
       case Nil =>
         System.err.println("usage: service <root> [host=localhost:8080]")
         System.exit(1)
@@ -26,6 +26,19 @@ object service {
     (uri: String) => {
       val file = new java.io.File(root + uri)
       if (file.isFile()) Some(file.toPath) else None
+    }
+}
+
+
+class EchoService extends Service[HttpRequest, HttpResponse] {
+  def apply(req: HttpRequest): Future[HttpResponse] =
+    Future {
+      val response = new DefaultHttpResponse(req.getProtocolVersion, HttpResponseStatus.OK)
+      response.setContent(req.getContent)
+      Option(req.headers().get("content-type")).foreach { c =>
+        response.headers.add("content-type", c)
+      }
+      response
     }
 }
 
